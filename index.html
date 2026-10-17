@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CONV LAB · 卷積神經網路視覺實驗室</title>
+<meta name="description" content="互動式學習 CNN：像素、卷積核、濾鏡、池化、特徵管線與 kernel 訓練">
+<style>
+:root{
+  --bg:#060a14;--panel:#0d1424;--panel2:#111b30;--line:#1f2d4a;
+  --cy:#3de6ff;--mag:#ff4fd8;--lime:#b6ff3d;--amber:#ffb23d;
+  --tx:#dbe6ff;--mut:#7f93bd;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono CJK TC",monospace;
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:15px;line-height:1.6;overflow:hidden;
+  background-image:linear-gradient(rgba(61,230,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(61,230,255,.05) 1px,transparent 1px);
+  background-size:36px 36px}
+button,select,input{font:inherit;color:inherit}
+#app{height:100vh;height:100dvh;display:grid;grid-template-rows:auto 1fr;padding-top:env(safe-area-inset-top)}
+header{display:flex;align-items:center;gap:16px;padding:10px 18px;border-bottom:1px solid var(--line);background:rgba(6,10,20,.85);backdrop-filter:blur(6px)}
+.logo{font-family:var(--mono);font-weight:700;letter-spacing:.12em;color:var(--cy);font-size:18px;white-space:nowrap}
+.logo small{display:block;font-size:10px;letter-spacing:.2em;color:var(--mut);font-weight:400}
+.tag{font-family:var(--mono);font-size:11px;color:var(--mut);letter-spacing:.15em;margin-left:auto;white-space:nowrap}
+.prog{display:flex;align-items:center;gap:8px;min-width:150px}
+.bar{flex:1;height:6px;background:var(--line);border-radius:4px;overflow:hidden;min-width:70px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cy),var(--mag));transition:width .4s}
+.pt{font-family:var(--mono);font-size:12px;color:var(--cy);white-space:nowrap}
+.btn{background:transparent;border:1px solid var(--cy);color:var(--cy);padding:5px 12px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:12px;letter-spacing:.08em}
+.btn:hover{background:rgba(61,230,255,.12)}
+.btn.on{background:var(--cy);color:#001018}
+.btn.mag{border-color:var(--mag);color:var(--mag)}
+.btn.mag:hover{background:rgba(255,79,216,.12)}
+.btn.sm{padding:3px 9px;font-size:11px}
+main{display:grid;grid-template-columns:230px 1fr;min-height:0}
+nav{border-right:1px solid var(--line);padding:14px 10px;overflow:auto;background:rgba(13,20,36,.6)}
+nav .st{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:transparent;border:1px solid transparent;border-radius:8px;padding:9px 10px;cursor:pointer;margin-bottom:6px;position:relative}
+nav .st:hover{background:var(--panel2)}
+nav .st.act{border-color:var(--cy);background:rgba(61,230,255,.08);box-shadow:0 0 14px rgba(61,230,255,.15)}
+nav .num{font-family:var(--mono);font-size:12px;width:28px;height:28px;border-radius:50%;border:1px solid var(--mut);display:grid;place-items:center;color:var(--mut);flex:none}
+nav .st.act .num{border-color:var(--cy);color:var(--cy)}
+nav .st.done .num{background:var(--lime);border-color:var(--lime);color:#021}
+nav .nm b{display:block;font-family:var(--mono);font-size:12px;letter-spacing:.08em}
+nav .nm span{font-size:12px;color:var(--mut)}
+#stage{overflow:auto;padding:22px clamp(14px,3vw,34px) 40px;min-height:0}
+.sthead{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;margin-bottom:6px}
+.sthead .big{font-family:var(--mono);font-size:clamp(24px,4vw,38px);font-weight:700;letter-spacing:.06em;background:linear-gradient(90deg,var(--cy),var(--mag));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sthead .zh{font-size:18px;color:var(--tx)}
+.sthead .no{font-family:var(--mono);color:var(--mut);font-size:12px;letter-spacing:.2em}
+.learn{max-width:880px;color:#b9c9ea;margin:6px 0 18px}
+.learn code,.fm{font-family:var(--mono);color:var(--lime);background:rgba(182,255,61,.08);padding:1px 6px;border-radius:4px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.card h3{margin:0 0 10px;font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--cy);font-weight:600;text-transform:uppercase}
+.cvwrap{position:relative;width:100%;max-width:340px}
+canvas.px{display:block;width:100%;aspect-ratio:1;image-rendering:pixelated;border:1px solid var(--line);background:#000;touch-action:none;cursor:crosshair}
+.hl{position:absolute;border:2px solid var(--mag);box-shadow:0 0 8px var(--mag);pointer-events:none;display:none}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}
+.lbl{font-family:var(--mono);font-size:11px;color:var(--mut);letter-spacing:.1em}
+.num-grid{display:grid;gap:2px;font-family:var(--mono);font-size:11px}
+.num-grid div{padding:3px 0;text-align:center;border-radius:3px;background:#0a1020;min-width:0}
+.num-grid div.c{outline:2px solid var(--mag)}
+.mathrow{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:8px}
+.mg{display:grid;grid-template-columns:repeat(3,44px);gap:2px;font-family:var(--mono);font-size:12px}
+.mg div{padding:4px 0;text-align:center;background:#0a1020;border-radius:3px}
+.op{font-family:var(--mono);font-size:22px;color:var(--mag)}
+.sum{font-family:var(--mono);font-size:20px;color:var(--lime)}
+input[type=range]{width:100%;accent-color:var(--cy)}
+select,input[type=number]{background:#0a1020;border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+input[type=number]{width:62px;text-align:center;font-family:var(--mono)}
+.kin{display:grid;grid-template-columns:repeat(3,64px);gap:4px}
+.kv{font-family:var(--mono);font-size:13px;color:var(--lime)}
+.energy{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:center;font-family:var(--mono);font-size:12px}
+.energy .eb{height:10px;background:var(--line);border-radius:5px;overflow:hidden}
+.energy .eb i{display:block;height:100%;background:linear-gradient(90deg,var(--cy),var(--mag));width:0;transition:width .15s}
+.maps{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+.maps figure{margin:0}
+.maps canvas{width:100%}
+.maps figcaption{font-family:var(--mono);font-size:11px;color:var(--mut);text-align:center;margin-top:4px}
+.note{font-size:13px;color:var(--mut);margin-top:10px}
+.mission{margin-top:22px;border:1px solid var(--mag);border-radius:12px;padding:16px;background:linear-gradient(135deg,rgba(255,79,216,.08),transparent)}
+.mission h3{margin:0 0 8px;font-family:var(--mono);color:var(--mag);letter-spacing:.14em;font-size:12px}
+.mission .q{font-weight:600;margin-bottom:10px}
+.opt{display:block;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin-bottom:6px;cursor:pointer}
+.opt:hover{border-color:var(--cy)}
+.opt.ok{border-color:var(--lime);background:rgba(182,255,61,.1)}
+.opt.bad{border-color:#ff5d6c;background:rgba(255,93,108,.1)}
+.exp{margin-top:8px;font-size:14px;color:#c6d4f1;display:none}
+.pager{display:flex;justify-content:space-between;margin-top:24px}
+#intro{position:fixed;inset:0;z-index:50;background:var(--bg);display:grid;place-items:center;text-align:center;cursor:pointer;transition:opacity .6s}
+#intro.out{opacity:0;pointer-events:none}
+#intro .hello{font-family:var(--mono);color:var(--mut);letter-spacing:.3em;font-size:13px}
+#intro h1{font-family:var(--mono);font-size:clamp(34px,8vw,84px);letter-spacing:.1em;margin:10px 0;background:linear-gradient(90deg,var(--cy),var(--mag),var(--lime));-webkit-background-clip:text;background-clip:text;color:transparent}
+#intro p{color:var(--mut);margin:4px 0}
+#intro .skip{margin-top:30px;font-family:var(--mono);font-size:12px;color:var(--cy);animation:bl 1.2s infinite}
+#introcv{position:absolute;inset:0;width:100%;height:100%;opacity:.55}
+#intro .in{position:relative}
+@keyframes bl{50%{opacity:.2}}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:40;display:none;place-items:center;padding:16px}
+.modal.show{display:grid}
+.modal .box{background:var(--panel);border:1px solid var(--cy);border-radius:14px;padding:20px;max-width:460px;width:100%;max-height:90vh;overflow:auto}
+.modal h2{margin:0 0 10px;font-family:var(--mono);color:var(--cy);letter-spacing:.12em;font-size:16px}
+.logi{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--line);font-size:14px}
+.logi.d b{color:var(--lime)}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);background:var(--lime);color:#021;padding:10px 18px;border-radius:30px;font-family:var(--mono);font-size:13px;z-index:60;transition:transform .35s}
+#toast.show{transform:translateX(-50%) translateY(0)}
+footer.f{margin-top:30px;color:var(--mut);font-size:12px;font-family:var(--mono)}
+@media(max-width:820px){
+  main{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  nav{border-right:0;border-bottom:1px solid var(--line);display:flex;gap:6px;overflow-x:auto;padding:8px}
+  nav .st{width:auto;flex:none;margin:0;padding:6px 8px}
+  nav .nm span{display:none}
+  .tag{display:none}
+  header{flex-wrap:wrap;gap:8px 12px}
+  .logo{font-size:15px}
+  .prog{margin-left:auto}
+}
+</style>
+</head>
+<body>
+<div id="intro">
+  <canvas id="introcv"></canvas>
+  <div class="in">
+    <div class="hello">hello, creator</div>
+    <h1>CONV LAB</h1>
+    <p style="font-size:18px;color:var(--tx)">卷積神經網路視覺實驗室</p>
+    <p class="fm" style="display:inline-block;margin-top:10px">PIXEL → KERNEL → FEATURE → POOL → LEARN</p>
+    <div class="skip">CLICK TO START</div>
+  </div>
+</div>
+
+<div id="app">
+  <header>
+    <div class="logo">CONV LAB<small>卷積神經網路視覺實驗室</small></div>
+    <div class="tag">PIXEL → KERNEL → FEATURE → POOL → LEARN</div>
+    <div class="prog"><div class="bar"><i id="pbar"></i></div><span class="pt" id="ptxt">0/6</span></div>
+    <button class="btn" id="logBtn">JOURNEY LOG</button>
+  </header>
+  <main>
+    <nav id="rail"></nav>
+    <div id="stage"></div>
+  </main>
+</div>
+
+<div class="modal" id="logModal"><div class="box">
+  <h2>JOURNEY LOG</h2>
+  <div id="logList"></div>
+  <p class="note">進度只儲存在這個瀏覽器（localStorage）。</p>
+  <div class="row" style="justify-content:space-between">
+    <button class="btn mag sm" id="resetBtn">重設進度</button>
+    <button class="btn sm" id="logClose">關閉 ✕</button>
+  </div>
+</div></div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ============ 基礎工具 ============ */
+const N = 32;
+let img = new Float32Array(N*N);
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const f2 = v => { const a=+v.toFixed(2); return Object.is(a,-0)?'0':String(a); };
+
+/* 進度（localStorage 可能被禁用，全部 try/catch） */
+let done = new Set();
+try { done = new Set(JSON.parse(localStorage.getItem('convlab-done')||'[]')); } catch(e){}
+const save = () => { try{ localStorage.setItem('convlab-done', JSON.stringify([...done])); }catch(e){} };
+
+/* ============ 影像：預設圖案／上傳／繪圖 ============ */
+const off = document.createElement('canvas'); off.width = off.height = N;
+const octx = off.getContext('2d', {willReadFrequently:true});
+function readOff(){
+  const d = octx.getImageData(0,0,N,N).data, o = new Float32Array(N*N);
+  for(let i=0;i<N*N;i++) o[i] = (d[4*i]*.299 + d[4*i+1]*.587 + d[4*i+2]*.114)/255;
+  return o;
+}
+const PRESETS = {
+  house:{zh:'房子', draw(c){c.strokeStyle='#fff';c.lineWidth=2;c.strokeRect(8,15,16,13);c.beginPath();c.moveTo(5,16);c.lineTo(16,5);c.lineTo(27,16);c.stroke();c.strokeRect(14,21,4,7);}},
+  smile:{zh:'笑臉', draw(c){c.strokeStyle='#fff';c.fillStyle='#fff';c.lineWidth=2;c.beginPath();c.arc(16,16,12,0,7);c.stroke();c.fillRect(11,11,3,4);c.fillRect(19,11,3,4);c.beginPath();c.arc(16,17,6.5,0.15*Math.PI,0.85*Math.PI);c.stroke();}},
+  A:{zh:'字母 A', draw(c){c.fillStyle='#fff';c.font='bold 28px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('A',16,17);}},
+  seven:{zh:'數字 7', draw(c){c.fillStyle='#fff';c.font='bold 28px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('7',16,17);}},
+  stripes:{zh:'條紋', draw(c){c.strokeStyle='#fff';c.lineWidth=2;for(let i=-32;i<64;i+=8){c.beginPath();c.moveTo(i,32);c.lineTo(i+32,0);c.stroke();}c.fillStyle='#fff';c.fillRect(4,4,3,24);}},
+  checker:{zh:'棋盤', draw(c){c.fillStyle='#fff';for(let y=0;y<8;y++)for(let x=0;x<8;x++)if((x+y)%2===0)c.fillRect(x*4,y*4,4,4);}}
+};
+function imgOf(p){ octx.fillStyle='#000'; octx.fillRect(0,0,N,N); octx.save(); PRESETS[p].draw(octx); octx.restore(); return readOff(); }
+function setPreset(p){ img = imgOf(p); changed(); }
+function setFile(file){
+  const url = URL.createObjectURL(file), im = new Image();
+  im.onload = () => {
+    octx.fillStyle='#000'; octx.fillRect(0,0,N,N);
+    const s = Math.min(im.width, im.height), sx=(im.width-s)/2, sy=(im.height-s)/2;
+    octx.drawImage(im, sx, sy, s, s, 0, 0, N, N);
+    img = readOff(); URL.revokeObjectURL(url); changed();
+  };
+  im.src = url;
+}
+
+/* ============ 數學：卷積、池化 ============ */
+const KERNELS = {
+  identity:{zh:'原圖 Identity', k:[0,0,0,0,1,0,0,0,0]},
+  blur:{zh:'模糊 Blur', k:Array(9).fill(1/9)},
+  sharpen:{zh:'銳化 Sharpen', k:[0,-1,0,-1,5,-1,0,-1,0]},
+  edge:{zh:'輪廓 Edge', k:[-1,-1,-1,-1,8,-1,-1,-1,-1]},
+  sobelX:{zh:'垂直邊緣 Sobel-X', k:[-1,0,1,-2,0,2,-1,0,1]},
+  sobelY:{zh:'水平邊緣 Sobel-Y', k:[-1,-2,-1,0,0,0,1,2,1]},
+  emboss:{zh:'浮雕 Emboss', k:[-2,-1,0,-1,1,1,0,1,2]}
+};
+const kOptions = (sel) => Object.entries(KERNELS).map(([k,v])=>`<option value="${k}"${k===sel?' selected':''}>${v.zh}</option>`).join('');
+
+function conv(src, n, k, stride=1, pad=0){
+  const w = Math.floor((n + 2*pad - 3)/stride) + 1, o = new Float32Array(w*w);
+  for(let y=0;y<w;y++) for(let x=0;x<w;x++){
+    let s=0;
+    for(let i=0;i<3;i++) for(let j=0;j<3;j++){
+      const yy=y*stride+i-pad, xx=x*stride+j-pad;
+      if(yy>=0&&yy<n&&xx>=0&&xx<n) s += k[i*3+j]*src[yy*n+xx];
+    }
+    o[y*w+x]=s;
+  }
+  return {d:o, w};
+}
+function pool(src, n, size, type){
+  const w = Math.floor(n/size), o = new Float32Array(w*w);
+  for(let y=0;y<w;y++) for(let x=0;x<w;x++){
+    let m=-Infinity, s=0;
+    for(let i=0;i<size;i++) for(let j=0;j<size;j++){ const v=src[(y*size+i)*n + x*size+j]; if(v>m)m=v; s+=v; }
+    o[y*w+x] = type==='max' ? m : s/(size*size);
+  }
+  return {d:o, w};
+}
+const relu = a => a.map(v => v>0?v:0);
+const maxAbs = a => { let m=1e-9; for(const v of a) m=Math.max(m,Math.abs(v)); return m; };
+
+/* 畫灰階：raw 0..1；relu 0..max；signed 以 0.5 為中性 */
+function paintGray(cv, data, w, mode='raw', m=null, upto=Infinity){
+  if(cv.width!==w){ cv.width=w; cv.height=w; }
+  const c = cv.getContext('2d'), id = c.createImageData(w,w);
+  if(m===null) m = maxAbs(data);
+  for(let i=0;i<w*w;i++){
+    const v = data[i]; let g;
+    if(mode==='raw') g=v; else if(mode==='relu') g=Math.max(0,v)/m; else g=.5+v/(2*m);
+    const b = Math.max(0,Math.min(255,g*255));
+    const show = i<=upto;
+    id.data[4*i]  = show ? b*.55 : 8;
+    id.data[4*i+1]= show ? b*.95 : 12;
+    id.data[4*i+2]= show ? b : 22;
+    id.data[4*i+3]= 255;
+  }
+  c.putImageData(id,0,0);
+}
+
+/* 可在影像上繪圖＋懸停回報座標 */
+let tool = 'pen';
+function paintable(cv, onHover){
+  let down=false;
+  const pos = e => { const r=cv.getBoundingClientRect(); return [Math.floor((e.clientX-r.left)/r.width*N), Math.floor((e.clientY-r.top)/r.height*N)]; };
+  const brush = (x,y) => {
+    for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+      const xx=x+dx, yy=y+dy; if(xx<0||yy<0||xx>=N||yy>=N) continue;
+      const d=Math.hypot(dx,dy), i=yy*N+xx;
+      if(tool==='pen'){ const v = d===0?1:d<1.5?.7:0; if(v>img[i]) img[i]=v; }
+      else if(d<1.5) img[i]=0;
+    }
+  };
+  cv.addEventListener('pointerdown', e=>{ down=true; cv.setPointerCapture(e.pointerId); const [x,y]=pos(e); brush(x,y); changed(); });
+  cv.addEventListener('pointermove', e=>{ const [x,y]=pos(e); if(onHover) onHover(x,y); if(down){ brush(x,y); changed(); } });
+  const up = ()=>{ down=false; };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.addEventListener('pointerleave', ()=>{ if(onHover) onHover(null,null); });
+}
+
+/* 圖片來源工具列 */
+const srcBar = (paint=true) => `
+  <div class="row">
+    <span class="lbl">圖案</span>
+    ${Object.entries(PRESETS).map(([k,v])=>`<button class="btn sm" data-p="${k}">${v.zh}</button>`).join('')}
+  </div>
+  <div class="row">
+    ${paint?`<span class="lbl">繪圖</span><button class="btn sm on" data-t="pen">筆</button><button class="btn sm" data-t="eraser">橡皮擦</button>`:''}
+    <button class="btn sm mag" data-clear>清空</button>
+    <label class="btn sm" style="cursor:pointer">上傳圖片<input type="file" accept="image/*" data-file hidden></label>
+  </div>`;
+function wireSrc(root){
+  $$('[data-p]',root).forEach(b=>b.onclick=()=>setPreset(b.dataset.p));
+  $$('[data-t]',root).forEach(b=>{
+    b.classList.toggle('on', b.dataset.t===tool);
+    b.onclick=()=>{ tool=b.dataset.t; $$('[data-t]',root).forEach(x=>x.classList.toggle('on',x.dataset.t===tool)); };
+  });
+  const c=$('[data-clear]',root); if(c) c.onclick=()=>{ img=new Float32Array(N*N); changed(); };
+  const f=$('[data-file]',root); if(f) f.onchange=()=>{ if(f.files[0]) setFile(f.files[0]); f.value=''; };
+}
+const setHL = (hl, x, y, w, size=1) => { hl.style.display='block'; hl.style.left=(x/w*100)+'%'; hl.style.top=(y/w*100)+'%'; hl.style.width=(size/w*100)+'%'; hl.style.height=(size/w*100)+'%'; };
+
+/* ============ 測驗 ============ */
+function quiz(root, id, q){
+  const box = document.createElement('div'); box.className='mission';
+  box.innerHTML = `<h3>MISSION · ${q.mission}</h3><div class="q">${q.q}</div>
+    ${q.opts.map((o,i)=>`<button class="opt" data-i="${i}">${o}</button>`).join('')}
+    <div class="exp"></div>`;
+  root.appendChild(box);
+  const exp = $('.exp',box);
+  if(done.has(id)){ exp.style.display='block'; exp.innerHTML='✅ 已完成。'+q.exp; $$('.opt',box)[q.ans].classList.add('ok'); }
+  $$('.opt',box).forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.i; exp.style.display='block';
+    if(i===q.ans){ b.classList.add('ok'); exp.innerHTML='✅ 答對了！'+q.exp; complete(id); }
+    else { b.classList.add('bad'); exp.innerHTML='❌ 再想想看：'+q.hint; }
+  });
+}
+
+/* ============ 關卡 ============ */
+const STATIONS = [];
+
+/* 01 PIXELS */
+STATIONS.push({ id:'pixels', en:'PIXELS', zh:'像素：影像就是數字矩陣',
+ learn:`電腦看到的不是「圖」，而是一張<b>數字表格</b>。灰階影像的每個像素是 <code>0–255</code>（0 = 黑、255 = 白）。這裡的畫布是 <code>32×32 = 1024</code> 個數字。移動滑鼠到畫布上，右邊會顯示附近 7×7 像素的實際數值。你也可以直接畫圖、換圖案或上傳照片。`,
+ render(root, ctx){
+  root.innerHTML = `<div class="grid2">
+    <div class="card"><h3>像素畫布（可繪圖）</h3>
+      <div class="cvwrap"><canvas class="px" id="c1"></canvas><div class="hl" id="h1"></div></div>${srcBar(true)}</div>
+    <div class="card"><h3>滑鼠附近的像素值 (0–255)</h3>
+      <div class="num-grid" id="ng" style="grid-template-columns:repeat(7,1fr);max-width:360px"></div>
+      <p class="note" id="pinfo">把滑鼠移到左邊的畫布上。</p></div></div>`;
+  const cv=$('#c1',root), hl=$('#h1',root), ng=$('#ng',root), info=$('#pinfo',root);
+  let hx=null, hy=null;
+  const grid=()=>{
+    if(hx===null){ return; }
+    let h=''; for(let dy=-3;dy<=3;dy++) for(let dx=-3;dx<=3;dx++){
+      const x=hx+dx,y=hy+dy; const ok=x>=0&&y>=0&&x<N&&y<N; const v=ok?Math.round(img[y*N+x]*255):null;
+      h+=`<div class="${dx===0&&dy===0?'c':''}" style="${ok?`background:rgb(${v*.3|0},${v*.55|0},${v*.7|0});color:${v>140?'#001':'#cde'}`:'opacity:.25'}">${ok?v:'·'}</div>`;
+    }
+    ng.innerHTML=h; info.innerHTML=`座標 <span class="fm">(x=${hx}, y=${hy})</span> 數值 <span class="fm">${Math.round(img[hy*N+hx]*255)}</span>`;
+  };
+  paintable(cv,(x,y)=>{ hx=x; hy=y; if(x===null){ hl.style.display='none'; return; } setHL(hl,x,y,N); grid(); });
+  ctx.update=()=>{ paintGray(cv,img,N,'raw'); grid(); };
+  wireSrc(root); ctx.update();
+  const empty=Array(49).fill('<div>·</div>').join(''); ng.innerHTML=empty;
+ },
+ quiz:{mission:'Teach a machine to see numbers', q:'一張 32×32 的灰階影像，在電腦裡是什麼？', opts:['1024 個介於 0–255 的數字（32×32 矩陣）','一段描述影像的文字','三個數字：寬、高、顏色','32 個像素點'], ans:0, hint:'32×32 一共有幾個像素？每個像素存什麼？', exp:'影像 = 數字矩陣，所有影像處理與 CNN 都是在這些數字上運算。'}
+});
+
+/* 02 KERNEL */
+STATIONS.push({ id:'kernel', en:'KERNEL', zh:'卷積核：滑動視窗',
+ learn:`<b>卷積</b>是 CNN 的核心動作：拿一個小的 <code>3×3</code> 數字表（<b>kernel／濾波器</b>），在影像上一格一格滑動；每到一個位置，就把「影像 3×3 區塊」與 kernel <b>逐格相乘後加總</b>，得到輸出的一個像素。拖動滑桿或按播放，看看輸出圖如何被逐點「掃」出來。`,
+ render(root, ctx){
+  let kname='sobelX', idx=0, timer=null; const W=N-2, TOT=W*W;
+  root.innerHTML=`<div class="grid2">
+   <div class="card"><h3>輸入影像 + 3×3 視窗</h3><div class="cvwrap"><canvas class="px" id="ci"></canvas><div class="hl" id="hi"></div></div>${srcBar(true)}</div>
+   <div class="card"><h3>輸出特徵圖 (30×30)</h3><div class="cvwrap"><canvas class="px" id="co"></canvas><div class="hl" id="ho"></div></div>
+     <div class="row"><span class="lbl">Kernel</span><select id="ks">${kOptions(kname)}</select>
+     <button class="btn sm" id="play">▶ 播放</button></div>
+     <div style="margin-top:8px"><input type="range" id="sl" min="0" max="${TOT-1}" value="0"></div></div>
+   <div class="card" style="grid-column:1/-1"><h3>這一步的計算</h3>
+     <div class="mathrow"><div><div class="lbl">影像區塊</div><div class="mg" id="gp"></div></div><span class="op">×</span>
+     <div><div class="lbl">Kernel</div><div class="mg" id="gk"></div></div><span class="op">=</span>
+     <div><div class="lbl">逐格乘積</div><div class="mg" id="gm"></div></div><span class="op">Σ</span><span class="sum" id="gs"></span></div>
+     <p class="note">輸出尺寸 = (32 − 3)/1 + 1 = <b>30</b>。影像數值這裡以 0–255 顯示。</p></div></div>`;
+  const ci=$('#ci',root),co=$('#co',root),hi=$('#hi',root),ho=$('#ho',root),sl=$('#sl',root),pl=$('#play',root);
+  const mg=(arr,f=v=>v)=>arr.map(v=>`<div>${f(v)}</div>`).join('');
+  ctx.update=()=>{
+    const k=KERNELS[kname].k, o=conv(img,N,k,1,0);
+    const x=idx%W, y=(idx/W)|0;
+    paintGray(ci,img,N,'raw'); paintGray(co,o.d,W,'signed',null,idx);
+    setHL(hi,x,y,N,3); setHL(ho,x,y,W,1);
+    const p=[],m=[]; let s=0;
+    for(let i=0;i<3;i++) for(let j=0;j<3;j++){ const v=img[(y+i)*N+x+j]*255; p.push(Math.round(v)); const pr=v*k[i*3+j]; m.push(pr); s+=pr; }
+    $('#gp',root).innerHTML=mg(p); $('#gk',root).innerHTML=mg(k,f2); $('#gm',root).innerHTML=mg(m,v=>Math.round(v)); $('#gs',root).textContent='= '+Math.round(s);
+    sl.value=idx;
+  };
+  $('#ks',root).onchange=e=>{ kname=e.target.value; ctx.update(); };
+  sl.oninput=()=>{ idx=+sl.value; ctx.update(); };
+  pl.onclick=()=>{
+    if(timer){ clearInterval(timer); timer=null; pl.textContent='▶ 播放'; return; }
+    pl.textContent='❚❚ 暫停'; if(idx>=TOT-1) idx=0;
+    timer=setInterval(()=>{ idx=Math.min(TOT-1,idx+6); ctx.update(); if(idx>=TOT-1){ clearInterval(timer); timer=null; pl.textContent='▶ 播放'; } },30);
+  };
+  ctx.cleanup=()=>{ if(timer) clearInterval(timer); };
+  paintable(ci); wireSrc(root); idx=(W*8+8); ctx.update();
+ },
+ quiz:{mission:'Slide the window', q:'3×3 的 kernel 在 5×5 影像上滑動（stride=1、無 padding），輸出特徵圖尺寸是？', opts:['5×5','4×4','3×3','2×2'], ans:2, hint:'用公式 (N − K)/S + 1，N=5, K=3, S=1。', exp:'(5−3)/1+1 = 3，所以輸出是 3×3。加上 padding=1（same）才會維持 5×5。'}
+});
+
+/* 03 FILTER LAB */
+STATIONS.push({ id:'filter', en:'FILTER LAB', zh:'濾鏡工坊：自己設計 kernel',
+ learn:`不同的 kernel 會讓輸出「看見」不同的東西：<b>模糊</b>、<b>銳化</b>、<b>邊緣</b>。試著選預設，或直接修改 9 個數字。你也能調整 <code>stride</code>（步幅）、<code>padding</code>（補零）與 <code>ReLU</code>（把負值歸零，是 CNN 最常用的激活函數）。`,
+ render(root, ctx){
+  let k=[...KERNELS.sobelX.k], stride=1, pad=0, rl=false;
+  root.innerHTML=`<div class="grid2">
+   <div class="card"><h3>輸入</h3><div class="cvwrap"><canvas class="px" id="ci"></canvas></div>${srcBar(true)}</div>
+   <div class="card"><h3>輸出特徵圖</h3><div class="cvwrap"><canvas class="px" id="co"></canvas></div><p class="note" id="osz"></p></div>
+   <div class="card" style="grid-column:1/-1"><h3>Kernel 編輯器</h3>
+     <div class="mathrow" style="align-items:flex-start">
+       <div class="kin" id="kin">${k.map((v,i)=>`<input type="number" step="0.1" data-i="${i}" value="${f2(v)}">`).join('')}</div>
+       <div><div class="row" style="margin-top:0"><span class="lbl">預設</span><select id="kp">${kOptions('sobelX')}</select></div>
+       <div class="row"><span class="lbl">Stride</span><select id="st"><option>1</option><option>2</option><option>3</option></select>
+       <span class="lbl">Padding</span><select id="pd"><option value="0">0 (valid)</option><option value="1">1 (same)</option></select>
+       <label class="lbl"><input type="checkbox" id="rl"> ReLU</label></div>
+       <p class="note">kernel 數字總和 = <span class="kv" id="ksum"></span>（總和為 1 → 亮度大致不變；總和為 0 → 只留下變化／邊緣）</p></div>
+     </div></div></div>`;
+  const ci=$('#ci',root),co=$('#co',root);
+  ctx.update=()=>{
+    const o=conv(img,N,k,stride,pad); const d=rl?relu(o.d):o.d;
+    paintGray(ci,img,N,'raw'); paintGray(co,d,o.w,rl?'relu':'signed',maxAbs(o.d));
+    $('#osz',root).innerHTML=`輸出 <span class="fm">${o.w}×${o.w}</span> = ⌊(${N} + 2×${pad} − 3)/${stride}⌋ + 1`;
+    $('#ksum',root).textContent=f2(k.reduce((a,b)=>a+b,0));
+  };
+  const setK=()=>$$('#kin input',root).forEach((inp,i)=>inp.value=f2(k[i]));
+  $$('#kin input',root).forEach(inp=>inp.oninput=()=>{ k[+inp.dataset.i]=parseFloat(inp.value)||0; ctx.update(); });
+  $('#kp',root).onchange=e=>{ k=[...KERNELS[e.target.value].k]; setK(); ctx.update(); };
+  $('#st',root).onchange=e=>{ stride=+e.target.value; ctx.update(); };
+  $('#pd',root).onchange=e=>{ pad=+e.target.value; ctx.update(); };
+  $('#rl',root).onchange=e=>{ rl=e.target.checked; ctx.update(); };
+  paintable(ci); wireSrc(root); ctx.update();
+ },
+ quiz:{mission:'Design your filter', q:'Sobel-X 這類 kernel（左負右正）主要偵測什麼？', opts:['水平方向的邊緣','垂直方向的邊緣（左右亮度變化）','影像的整體亮度','顏色'], ans:1, hint:'它比較的是「左邊」和「右邊」的亮度差。', exp:'左右亮度差大 → 有一條垂直的邊。Sobel-Y 則比較上下，偵測水平邊。'}
+});
+
+/* 04 POOLING */
+STATIONS.push({ id:'pool', en:'POOLING', zh:'池化：壓縮並保留重點',
+ learn:`卷積後的特徵圖還是很大。<b>池化</b>把相鄰的小區塊壓成一個數字：<code>Max Pooling</code> 取區塊最大值（保留最強的反應），<code>Average Pooling</code> 取平均。結果是尺寸變小、運算更省，而且對物體<b>小幅位移</b>更不敏感。把滑鼠移到右邊池化圖，看它對應左邊哪一塊。`,
+ render(root, ctx){
+  let kname='sobelX', size=2, type='max';
+  root.innerHTML=`<div class="grid2">
+   <div class="card"><h3>特徵圖 (ReLU(conv))</h3><div class="cvwrap"><canvas class="px" id="cf"></canvas><div class="hl" id="hf"></div></div>
+     <div class="row"><span class="lbl">Kernel</span><select id="ks">${kOptions(kname)}</select></div>${srcBar(true)}</div>
+   <div class="card"><h3>池化後</h3><div class="cvwrap"><canvas class="px" id="cp"></canvas></div>
+     <div class="row"><span class="lbl">類型</span><button class="btn sm on" data-ty="max">Max</button><button class="btn sm" data-ty="avg">Average</button>
+     <span class="lbl">視窗</span><select id="ps"><option>2</option><option>3</option><option>4</option></select></div>
+     <p class="note" id="pi">移動滑鼠到池化圖上。</p><p class="note" id="psz"></p></div></div>`;
+  const cf=$('#cf',root),cp=$('#cp',root),hf=$('#hf',root);
+  let fw=30,pw=15;
+  ctx.update=()=>{
+    const f=relu(conv(img,N,KERNELS[kname].k,1,0).d), fwv=N-2; fw=fwv;
+    const m=maxAbs(f); const p=pool(f,fw,size,type); pw=p.w;
+    paintGray(cf,f,fw,'relu',m); paintGray(cp,p.d,pw,'relu',m);
+    $('#psz',root).innerHTML=`${fw}×${fw} = ${fw*fw} 個數字 → <span class="fm">${pw}×${pw} = ${pw*pw}</span>（減少 ${Math.round((1-pw*pw/(fw*fw))*100)}%）`;
+    ctx.f=f;
+  };
+  cp.addEventListener('pointermove',e=>{
+    const r=cp.getBoundingClientRect(); const px=Math.min(pw-1,Math.floor((e.clientX-r.left)/r.width*pw)), py=Math.min(pw-1,Math.floor((e.clientY-r.top)/r.height*pw));
+    setHL(hf,px*size,py*size,fw,size);
+    const vals=[]; for(let i=0;i<size;i++) for(let j=0;j<size;j++) vals.push(ctx.f[(py*size+i)*fw+px*size+j]);
+    const res=type==='max'?Math.max(...vals):vals.reduce((a,b)=>a+b,0)/vals.length;
+    $('#pi',root).innerHTML=`區塊 [${vals.map(f2).join(', ')}] → ${type==='max'?'最大值':'平均'} = <span class="fm">${f2(res)}</span>`;
+  });
+  cp.addEventListener('pointerleave',()=>{ hf.style.display='none'; });
+  $('#ks',root).onchange=e=>{ kname=e.target.value; ctx.update(); };
+  $('#ps',root).onchange=e=>{ size=+e.target.value; ctx.update(); };
+  $$('[data-ty]',root).forEach(b=>b.onclick=()=>{ type=b.dataset.ty; $$('[data-ty]',root).forEach(x=>x.classList.toggle('on',x===b)); ctx.update(); });
+  wireSrc(root); ctx.update();
+ },
+ quiz:{mission:'Shrink the world', q:'2×2 Max Pooling 最主要的作用是？', opts:['把影像變得更清楚','縮小特徵圖並保留最強反應，同時對小位移更不敏感','增加 kernel 數量','把負數變成零'], ans:1, hint:'想想它取的是區塊內的什麼值，以及輸出變大還是變小。', exp:'尺寸減半、運算量降為約 1/4；最大值保留「有沒有偵測到」，位置稍微偏一點也不影響。'}
+});
+
+/* 05 PIPELINE */
+const DET = [
+  {n:'垂直邊', k:KERNELS.sobelX.k},
+  {n:'水平邊', k:KERNELS.sobelY.k},
+  {n:'斜線 /', k:[-2,-1,0,-1,0,1,0,1,2]},
+  {n:'斜線 \\', k:[0,-1,-2,1,0,-1,2,1,0]}
+];
+STATIONS.push({ id:'pipeline', en:'PIPELINE', zh:'特徵管線：Conv → ReLU → Pool',
+ learn:`把前面的積木串起來：影像 → 多個 kernel（每個是一種<b>特徵偵測器</b>）→ ReLU → Max Pool，得到一組<b>特徵圖</b>。在左邊畫一條直線、橫線或斜線，右邊哪一個偵測器反應最強？<br><span style="color:var(--amber)">※ 這裡的 4 個 kernel 是人工設計的；真正的 CNN 會從資料中「學」出成百上千個 kernel（下一關）。</span>`,
+ render(root, ctx){
+  root.innerHTML=`<div class="grid2">
+   <div class="card"><h3>畫一些線條</h3><div class="cvwrap"><canvas class="px" id="ci"></canvas></div>${srcBar(true)}</div>
+   <div class="card"><h3>特徵偵測器反應強度</h3><div class="energy" id="en"></div><p class="note" id="dom"></p></div>
+   <div class="card" style="grid-column:1/-1"><h3>每個偵測器的池化特徵圖 (15×15)</h3><div class="maps" id="maps">
+     ${DET.map((d,i)=>`<figure><canvas class="px" data-m="${i}"></canvas><figcaption>${d.n}</figcaption></figure>`).join('')}</div></div></div>`;
+  const ci=$('#ci',root);
+  $('#en',root).innerHTML=DET.map((d,i)=>`<span>${d.n}</span><div class="eb"><i data-e="${i}"></i></div><span data-v="${i}">0</span>`).join('');
+  ctx.update=()=>{
+    paintGray(ci,img,N,'raw');
+    const maps=DET.map(d=>pool(relu(conv(img,N,d.k,1,0).d),N-2,2,'max'));
+    const m=Math.max(1e-9,...maps.map(p=>maxAbs(p.d)));
+    const en=maps.map(p=>p.d.reduce((a,b)=>a+b,0)); const me=Math.max(...en);
+    maps.forEach((p,i)=>{ paintGray($(`[data-m="${i}"]`,root),p.d,p.w,'relu',m); $(`[data-e="${i}"]`,root).style.width=(me>1e-6?en[i]/me*100:0)+'%'; $(`[data-v="${i}"]`,root).textContent=f2(en[i]); });
+    $('#dom',root).innerHTML = me>1e-6 ? `最強偵測器：<span class="fm">${DET[en.indexOf(me)].n}</span>` : '畫布是空的，先畫點東西。';
+  };
+  paintable(ci); wireSrc(root); ctx.update();
+ },
+ quiz:{mission:'Extract features', q:'為什麼處理影像時，CNN 通常比「把像素全部攤平丟進全連接層」更好？', opts:['因為 CNN 的數學比較簡單','因為 CNN 用局部視窗並共享權重，參數少又能偵測任何位置的相同特徵','因為 CNN 不需要訓練','因為 CNN 只看顏色'], ans:1, hint:'想想同一個 kernel 是不是會滑過整張圖。', exp:'局部連接 + 權重共享 = 參數少、且同一個特徵出現在影像哪裡都能被偵測（平移不變性）。'}
+});
+
+/* 06 TRAIN */
+const TRAINSET = ['house','smile','A','seven','stripes'].map(imgOf);
+STATIONS.push({ id:'train', en:'TRAIN', zh:'訓練：讓 kernel 自己學會',
+ learn:`真正的 CNN 不是人類手寫 kernel，而是用<b>梯度下降</b>從資料學出來。這裡做一個最小實驗：給 5 張訓練圖，以及「目標輸出」（例如 Sobel-X 的結果），讓一個<b>隨機初始化</b>的 3×3 kernel 不斷調整，使它的輸出愈來愈接近目標。損失 <code>Loss = 平均 (輸出 − 目標)² / 2</code>，每一步 <code>K ← K − 學習率 × 梯度</code>。`,
+ render(root, ctx){
+  let tname='sobelX', lr=0.3, K=[], hist=[], timer=null, steps=0;
+  const rnd=()=>{ K=Array.from({length:9},()=>Math.random()*.4-.2); hist=[]; steps=0; };
+  const tg=()=>TRAINSET.map(x=>conv(x,N,KERNELS[tname].k,1,0).d);
+  let targets=tg();
+  rnd();
+  root.innerHTML=`<div class="grid2">
+   <div class="card"><h3>學習中的 Kernel vs 目標 Kernel</h3>
+     <div class="mathrow"><div><div class="lbl">學到的</div><div class="mg" id="gl"></div></div><span class="op">→</span><div><div class="lbl">目標</div><div class="mg" id="gt"></div></div></div>
+     <div class="row"><span class="lbl">目標</span><select id="ts">${kOptions(tname).replace(/<option value="identity".*?<\/option>/,'')}</select>
+       <span class="lbl">學習率 <span class="kv" id="lrv"></span></span></div>
+     <input type="range" id="lr" min="0.02" max="1.2" step="0.02" value="${lr}">
+     <div class="row"><button class="btn sm" id="step">單步</button><button class="btn sm" id="auto">▶ 自動訓練</button><button class="btn sm mag" id="rst">重新隨機初始化</button></div>
+     <p class="note">學習率太大會震盪甚至發散（試試拉到最右邊）；太小則收斂很慢。</p></div>
+   <div class="card"><h3>Loss（對數刻度）</h3><canvas id="lc" width="320" height="140" style="width:100%;background:#0a1020;border:1px solid var(--line);border-radius:6px"></canvas>
+     <p class="note" id="ls"></p></div>
+   <div class="card"><h3>預覽：學到的輸出</h3><div class="cvwrap"><canvas class="px" id="po"></canvas></div></div>
+   <div class="card"><h3>預覽：目標輸出</h3><div class="cvwrap"><canvas class="px" id="pt"></canvas></div>${srcBar(true)}</div></div>`;
+  const draw=()=>{
+    $('#gl',root).innerHTML=K.map(v=>`<div>${f2(v)}</div>`).join('');
+    $('#gt',root).innerHTML=KERNELS[tname].k.map(v=>`<div>${f2(v)}</div>`).join('');
+    $('#lrv',root).textContent=lr.toFixed(2);
+    const t=conv(img,N,KERNELS[tname].k,1,0), o=conv(img,N,K,1,0), m=maxAbs(t.d);
+    paintGray($('#po',root),o.d,o.w,'signed',m); paintGray($('#pt',root),t.d,t.w,'signed',m);
+    const c=$('#lc',root), g=c.getContext('2d'); g.clearRect(0,0,c.width,c.height);
+    g.strokeStyle='#1f2d4a'; g.lineWidth=1; for(let i=1;i<4;i++){ g.beginPath(); g.moveTo(0,i*35); g.lineTo(c.width,i*35); g.stroke(); }
+    if(hist.length>1){
+      const L=hist.map(v=>Math.log10(Math.max(v,1e-9))), hi=Math.max(...L), lo=Math.min(-6,Math.min(...L));
+      g.strokeStyle='#3de6ff'; g.lineWidth=2; g.beginPath();
+      L.forEach((v,i)=>{ const x=i/(L.length-1)*(c.width-4)+2, y=8+(hi-v)/(hi-lo||1)*(c.height-16); i?g.lineTo(x,y):g.moveTo(x,y); });
+      g.stroke();
+    }
+    const last=hist.length?hist[hist.length-1]:null;
+    $('#ls',root).innerHTML=`步數 <span class="fm">${steps}</span> Loss <span class="fm">${last===null?'—':last<1e-6?'< 1e-6':last.toExponential(2)}</span>${last!==null&&last<1e-4?' ✅ 已學會！':''}`;
+  };
+  const step=()=>{
+    const g=new Array(9).fill(0); let M=0, sq=0;
+    TRAINSET.forEach((x,ti)=>{ const tgt=targets[ti];
+      for(let y=0;y<N-2;y++) for(let xx=0;xx<N-2;xx++){
+        let o=0; for(let i=0;i<3;i++) for(let j=0;j<3;j++) o+=K[i*3+j]*x[(y+i)*N+xx+j];
+        const e=o-tgt[y*(N-2)+xx]; sq+=e*e; M++;
+        for(let i=0;i<3;i++) for(let j=0;j<3;j++) g[i*3+j]+=e*x[(y+i)*N+xx+j];
+      }});
+    hist.push(sq/(2*M)); steps++; if(hist.length>600) hist.shift();
+    for(let q=0;q<9;q++) K[q]-=lr*g[q]/M;
+    if(!isFinite(K[0])||Math.abs(K[0])>1e6){ hist.push(1e6); }
+  };
+  ctx.update=draw;
+  $('#step',root).onclick=()=>{ step(); draw(); };
+  const auto=$('#auto',root);
+  auto.onclick=()=>{
+    if(timer){ clearInterval(timer); timer=null; auto.textContent='▶ 自動訓練'; return; }
+    auto.textContent='❚❚ 暫停';
+    timer=setInterval(()=>{ for(let i=0;i<10;i++) step(); draw(); },40);
+  };
+  $('#rst',root).onclick=()=>{ rnd(); draw(); };
+  $('#ts',root).onchange=e=>{ tname=e.target.value; targets=tg(); hist=[]; steps=0; draw(); };
+  $('#lr',root).oninput=e=>{ lr=+e.target.value; draw(); };
+  ctx.cleanup=()=>{ if(timer) clearInterval(timer); };
+  ctx.trainHooks={step,get K(){return K;}};
+  wireSrc(root); draw();
+ },
+ quiz:{mission:'Let the machine learn', q:'在 CNN 裡，kernel 裡面的數字是怎麼得到的？', opts:['由工程師逐一手寫','隨機產生後就固定不變','從訓練資料中用梯度下降不斷調整學出來','從網路上下載固定的表格'], ans:2, hint:'剛剛的實驗中，kernel 一開始是隨機的，後來為什麼會變成目標的樣子？', exp:'kernel 是模型的「權重」。訓練時依損失的梯度更新，最終自動學出邊緣、紋理、形狀等有用的偵測器。'}
+});
+
+/* ============ 框架：導覽、進度、路由 ============ */
+let cur = -1, ctx = {};
+function changed(){ if(ctx.update) ctx.update(); }
+function complete(id){
+  if(done.has(id)) return; done.add(id); save(); refreshProg();
+  toast(done.size===STATIONS.length ? '🎉 MISSION COMPLETE · 全部關卡完成！' : '✓ 關卡完成 '+done.size+'/'+STATIONS.length);
+}
+let tt; function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'),2400); }
+function refreshProg(){
+  $('#pbar').style.width=(done.size/STATIONS.length*100)+'%'; $('#ptxt').textContent=done.size+'/'+STATIONS.length;
+  $$('#rail .st').forEach((b,i)=>b.classList.toggle('done',done.has(STATIONS[i].id)));
+  $('#logList').innerHTML=STATIONS.map((s,i)=>`<div class="logi${done.has(s.id)?' d':''}"><span>0${i+1} ${s.en} · ${s.zh.split('：')[0]}</span><b>${done.has(s.id)?'✓ DONE':'—'}</b></div>`).join('');
+}
+function go(i){
+  i=Math.max(0,Math.min(STATIONS.length-1,i));
+  if(ctx.cleanup) ctx.cleanup();
+  cur=i; ctx={}; const s=STATIONS[i], st=$('#stage');
+  st.innerHTML=`<div class="sthead"><span class="no">STATION 0${i+1} / 0${STATIONS.length}</span><span class="big">${s.en}</span><span class="zh">${s.zh}</span></div><p class="learn">${s.learn}</p><div id="body"></div>`;
+  s.render($('#body'), ctx);
+  quiz($('#body'), s.id, s.quiz);
+  const pg=document.createElement('div'); pg.className='pager';
+  pg.innerHTML=`<button class="btn" ${i===0?'disabled style="opacity:.3"':''} data-go="${i-1}">← PREVIOUS</button>${i<STATIONS.length-1?`<button class="btn mag" data-go="${i+1}">NEXT STATION →</button>`:`<button class="btn mag" id="fin">FINISH ✓</button>`}`;
+  $('#body').appendChild(pg);
+  $$('[data-go]',pg).forEach(b=>b.onclick=()=>{ location.hash='s'+(+b.dataset.go+1); });
+  const fin=$('#fin',pg); if(fin) fin.onclick=()=>{ refreshProg(); $('#logModal').classList.add('show'); };
+  const ft=document.createElement('footer'); ft.className='f'; ft.textContent='CONV LAB · Vibe coding assignment · 純前端單檔 HTML，所有運算都在你的瀏覽器中執行';
+  $('#body').appendChild(ft);
+  $$('#rail .st').forEach((b,j)=>b.classList.toggle('act',j===i));
+  st.scrollTop=0;
+}
+function route(){ const m=/^#s(\d)$/.exec(location.hash); go(m?+m[1]-1:0); }
+
+$('#rail').innerHTML = STATIONS.map((s,i)=>`<button class="st" data-i="${i}"><span class="num">0${i+1}</span><span class="nm"><b>${s.en}</b><span>${s.zh.split('：')[0]}</span></span></button>`).join('');
+$$('#rail .st').forEach(b=>b.onclick=()=>{ location.hash='s'+(+b.dataset.i+1); });
+window.addEventListener('hashchange', route);
+$('#logBtn').onclick=()=>{ refreshProg(); $('#logModal').classList.add('show'); };
+$('#logClose').onclick=()=>$('#logModal').classList.remove('show');
+$('#logModal').onclick=e=>{ if(e.target.id==='logModal') e.target.classList.remove('show'); };
+$('#resetBtn').onclick=()=>{ if(confirm('確定要重設所有進度嗎？')){ done=new Set(); save(); refreshProg(); route(); } };
+
+setPreset('house'); refreshProg(); route();
+
+/* 開場動畫：飄動的像素網格，點擊跳過 */
+(function(){
+  const intro=$('#intro'), cv=$('#introcv'), c=cv.getContext('2d'); let raf, t=0;
+  const size=()=>{ cv.width=innerWidth; cv.height=innerHeight; }; size(); addEventListener('resize',size);
+  function loop(){
+    t+=.02; c.clearRect(0,0,cv.width,cv.height); const s=26;
+    for(let y=0;y<cv.height/s;y++) for(let x=0;x<cv.width/s;x++){
+      const v=(Math.sin(x*.35+t)+Math.cos(y*.3-t*1.3)+Math.sin((x+y)*.2+t*.7))/3;
+      const a=Math.max(0,v)*.5; if(a<.05) continue;
+      c.fillStyle=`rgba(61,230,255,${a})`; c.fillRect(x*s+2,y*s+2,s-4,s-4);
+    }
+    raf=requestAnimationFrame(loop);
+  }
+  loop();
+  const close=()=>{ intro.classList.add('out'); setTimeout(()=>{ cancelAnimationFrame(raf); intro.remove(); },700); };
+  intro.onclick=close; addEventListener('keydown',e=>{ if(document.getElementById('intro')&&(e.key==='Enter'||e.key===' ')) close(); });
+})();
+</script>
+</body>
+</html>
